@@ -27,7 +27,7 @@ def cmd_focus(args: argparse.Namespace) -> int:
             print(f"--only に指定できるのは: {names}")
             return 1
 
-    if args.web:
+    if not args.window:
         from video_kit import web
 
         return web.run(targets, roi_size=args.roi, port=args.port, open_browser=not args.no_open)
@@ -56,12 +56,12 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="URL_OR_IP",
         help="RTSP URL / IP / デバイス番号 (0 = 内蔵カメラ)。省略時は環境変数",
     )
-    focus.add_argument("--width", type=int, help="1 カメラあたりの表示幅")
+    focus.add_argument("--width", type=int, help="--window 時の 1 カメラあたりの表示幅")
     focus.add_argument("--roi", type=int, default=500, help="中央計測領域の一辺 [px]")
     focus.add_argument("--only", metavar="NAME", help="1 台だけ表示する (例: cam10)")
-    focus.add_argument("--web", action="store_true", help="ブラウザに表示する (文字がくっきり)")
-    focus.add_argument("--port", type=int, default=0, help="--web のポート。0 なら空きを自動で使う")
-    focus.add_argument("--no-open", action="store_true", help="--web でブラウザを自動で開かない")
+    focus.add_argument("--window", action="store_true", help="OpenCV のウィンドウで表示")
+    focus.add_argument("--port", type=int, default=0, help="ブラウザ表示のポート (0 = 自動)")
+    focus.add_argument("--no-open", action="store_true", help="ブラウザを自動で開かない")
     focus.set_defaults(func=cmd_focus)
 
     cams = sub.add_parser("cameras", help="カメラを探して一覧表示", add_help=False)

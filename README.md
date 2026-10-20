@@ -4,7 +4,7 @@ RTSP カメラ向けの道具箱。
 
 | コマンド | 何をするか |
 |---|---|
-| `video-kit focus` | ピント合わせ。ライブ映像に鮮鋭度メーターを重ねて表示する |
+| `video-kit focus` | ピント合わせ。ブラウザにライブ映像と鮮鋭度メーターを表示する |
 | `video-kit cameras` | 同じネットワークのカメラを探して IP / URL を表示する |
 
 どの RTSP カメラでも使える。IP だけ渡したときは RouteCam (e-con Systems) 形式の URL で接続する。
@@ -59,20 +59,13 @@ video-kit focus 192.0.2.10                     # IP を指定 (RouteCam 形式�
 video-kit focus rtsp://host:554/stream1       # URL を直接指定 (他機種はこちら)
 video-kit focus 192.0.2.10 192.0.2.11 --only cam11   # 1 台だけ大きく表示
 video-kit focus 1                             # Mac のカメラ (デバイス番号)
-video-kit focus 192.0.2.10 --web              # ブラウザに表示 (おすすめ)
+video-kit focus 192.0.2.10 --window           # OpenCV のウィンドウで表示
 ```
 
-### ブラウザ表示 `--web`
+起動するとブラウザが開き、映像と数値が出る。終了はターミナルで `Ctrl+C`。
 
-OpenCV のウィンドウは文字を映像に焼き込むため、Retina ではぼやける。
-`--web` を付けるとブラウザに表示し、数値や判定がくっきり読める (日本語表示)。
-
-| オプション | 既定 | 意味 |
-|---|---|---|
-| `--port` | 0 (空きを自動) | 待ち受けるポート |
-| `--no-open` | なし | ブラウザを自動で開かない |
-
-終了はターミナルで `Ctrl+C`。
+`--window` を付けると従来の OpenCV ウィンドウで表示する (ブラウザ不要だが、
+文字を映像に焼き込むため Retina ではぼやけ、日本語も出せない)。
 
 ### Mac のカメラの番号
 
@@ -101,20 +94,25 @@ ffmpeg -hide_banner -f avfoundation -list_devices true -i ""
 
 ### キー操作
 
+ブラウザでは画面上部のボタンでも同じことができる。
+
 | キー | 動作 |
 |---|---|
-| `q` / `ESC` | 終了 (最後にピーク値を表示) |
 | `r` | ピーク値をリセット |
 | `c` | 魚眼円の検出表示を切り替え |
 | `f` | 計測領域を 中央 / 全体 で切り替え |
+| `q` / `ESC` | 終了 (`--window` のときだけ。ブラウザ表示はターミナルで `Ctrl+C`) |
 
 ### オプション
 
 | オプション | 既定 | 意味 |
 |---|---|---|
-| `--width` | 760 (1 台なら 1100) | 1 カメラあたりの表示幅 |
 | `--roi` | 500 | 中央計測領域の一辺 [px] |
 | `--only NAME` | なし | 1 台だけ表示 (例: `cam11`) |
+| `--port` | 0 (空きを自動) | ブラウザ表示のポート |
+| `--no-open` | なし | ブラウザを自動で開かない |
+| `--window` | なし | OpenCV のウィンドウで表示する |
+| `--width` | 760 (1 台なら 1100) | `--window` 時の 1 カメラあたりの表示幅 |
 
 ### 魚眼レンズの注意
 
@@ -173,8 +171,8 @@ uv run ruff format .       # 整形
 | ファイル | 役割 |
 |---|---|
 | `src/video_kit/cli.py` | コマンドの入口 |
-| `src/video_kit/focus.py` | ピント合わせ画面と鮮鋭度 |
-| `src/video_kit/web.py` / `focus.html` | ブラウザ表示 (`--web`) |
+| `src/video_kit/focus.py` | 鮮鋭度の計算と OpenCV ウィンドウ表示 (`--window`) |
+| `src/video_kit/web.py` / `focus.html` | ブラウザ表示 (標準) |
 | `src/video_kit/cameras.py` | 接続先の決定とカメラ探索 |
 | `src/video_kit/stream_reader.py` | 最新フレームだけを持つ RTSP 受信 |
 | `src/video_kit/fisheye.py` | 魚眼円の検出 |

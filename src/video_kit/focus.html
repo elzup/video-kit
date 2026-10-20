@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ピント合わせ</title>
+<style>
+  :root {
+    --bg: #0e1116;
+    --panel: #171b22;
+    --line: #2a303b;
+    --text: #e8ebf0;
+    --muted: #8b93a1;
+    --ok: #3ddc84;
+    --soft: #ffb547;
+    --bad: #ff5d5d;
+    --roi: #4cc9f0;
+    --circle: #ffb547;
+  }
+  * { box-sizing: border-box; }
+  /* display を指定した要素でも hidden 属性で消えるように */
+  [hidden] { display: none !important; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--line);
+  }
+  header h1 { font-size: 16px; margin: 0; font-weight: 600; }
+  header .hint { color: var(--muted); font-size: 13px; }
+  header .spacer { flex: 1; }
+  button {
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  button:hover { border-color: var(--muted); }
+  button kbd {
+    font: 12px ui-monospace, SFMono-Regular, monospace;
+    color: var(--muted);
+    margin-left: 6px;
+  }
+  button[aria-pressed="true"] { border-color: var(--roi); }
+  main {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+    gap: 16px;
+    padding: 16px 20px;
+  }
+  .cam {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .meter { padding: 14px 16px 12px; }
+  .row { display: flex; align-items: baseline; gap: 12px; }
+  .name { color: var(--muted); font-size: 14px; }
+  .value {
+    font-size: 40px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+  .grade {
+    font-size: 14px;
+    font-weight: 600;
+    padding: 2px 10px;
+    border-radius: 999px;
+    color: var(--bg);
+  }
+  .peak {
+    margin-left: auto;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .bar {
+    height: 8px;
+    margin-top: 10px;
+    background: var(--line);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .bar > div { height: 100%; width: 0; transition: width 0.1s linear; }
+  .view { position: relative; background: #000; }
+  .view img { display: block; width: 100%; height: auto; }
+  .view svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .view .nosignal {
+    position: absolute; inset: 0;
+    display: grid; place-items: center;
+    color: var(--bad);
+  }
+  .circle-label {
+    padding: 8px 16px;
+    color: var(--muted);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    border-top: 1px solid var(--line);
+  }
+  @media (max-width: 480px) {
+    main { grid-template-columns: 1fr; padding: 12px 16px; }
+    header .hint { display: none; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>ピント合わせ</h1>
+  <span class="hint">レンズを回して、数値が一番高い位置で止める</span>
+  <span class="spacer"></span>
+  <button id="reset">ピークをリセット<kbd>R</kbd></button>
+  <button id="roi" aria-pressed="true">中央だけ測る<kbd>F</kbd></button>
+  <button id="circle" aria-pressed="true">魚眼円<kbd>C</kbd></button>
+</header>
+<main id="cams"></main>
+
+<script>
+const GRADES = {
+  PINBOKE: { label: "ピンボケ", color: "var(--bad)" },
+  SOFT: { label: "甘い", color: "var(--soft)" },
+  OK: { label: "OK", color: "var(--ok)" },
+}
+const POLL_MS = 100
+const SVG_NS = "http://www.w3.org/2000/svg"
+const cards = new Map()
+
+function el(tag, attrs = {}, parent) {
+  const node = attrs.svg ? document.createElementNS(SVG_NS, tag) : document.createElement(tag)
+  for (const [key, value] of Object.entries(attrs)) {
+    if (key === "svg") continue
+    if (key === "text") node.textContent = value
+    else node.setAttribute(key, value)
+  }
+  if (parent) parent.appendChild(node)
+  return node
+}
+
+function createCard(cam, index) {
+  const root = el("section", { class: "cam" }, document.getElementById("cams"))
+  const meter = el("div", { class: "meter" }, root)
+  const row = el("div", { class: "row" }, meter)
+  const name = el("span", { class: "name", text: cam.name }, row)
+  const value = el("span", { class: "value", text: "—" }, row)
+  const grade = el("span", { class: "grade" }, row)
+  const peak = el("span", { class: "peak" }, row)
+  const bar = el("div", {}, el("div", { class: "bar" }, meter))
+
+  const view = el("div", { class: "view" }, root)
+  el("img", { src: `/stream/${index}`, alt: cam.name }, view)
+  const svg = el("svg", { svg: true, preserveAspectRatio: "none" }, view)
+  const roi = el("rect", { svg: true, fill: "none", stroke: "var(--roi)", "stroke-width": 3 }, svg)
+  const circle = el("circle", { svg: true, fill: "none", stroke: "var(--circle)", "stroke-width": 3 }, svg)
+  const nosignal = el("div", { class: "nosignal", text: "映像がありません" }, view)
+  const circleLabel = el("div", { class: "circle-label" }, root)
+  return { name, value, grade, peak, bar, svg, roi, circle, nosignal, circleLabel }
+}
+
+function renderCard(card, cam) {
+  card.nosignal.hidden = cam.signal
+  if (!cam.signal) return
+
+  const g = GRADES[cam.grade]
+  card.value.textContent = cam.value.toFixed(1)
+  card.value.style.color = g.color
+  card.grade.textContent = g.label
+  card.grade.style.background = g.color
+  card.peak.textContent = `ピーク ${cam.peak.toFixed(1)}`
+  const ratio = cam.peak > 0 ? Math.min(1, cam.value / cam.peak) : 0
+  card.bar.style.width = `${ratio * 100}%`
+  card.bar.style.background = g.color
+
+  card.svg.setAttribute("viewBox", `0 0 ${cam.width} ${cam.height}`)
+  const [x, y, w, h] = cam.roi
+  Object.entries({ x, y, width: w, height: h }).forEach(([k, v]) => card.roi.setAttribute(k, v))
+
+  const c = cam.circle
+  card.circle.style.display = c ? "" : "none"
+  if (c) {
+    card.circle.setAttribute("cx", c.cx)
+    card.circle.setAttribute("cy", c.cy)
+    card.circle.setAttribute("r", c.r)
+  }
+  card.circleLabel.textContent = c
+    ? `魚眼円  直径 ${Math.round(2 * c.r)} px  中心 (${Math.round(c.cx)}, ${Math.round(c.cy)})`
+    : "魚眼円  —"
+}
+
+async function poll() {
+  try {
+    const res = await fetch("/stats")
+    if (!res.ok) throw new Error(`stats ${res.status}`)
+    const data = await res.json()
+    data.cameras.forEach((cam, i) => {
+      if (!cards.has(cam.name)) cards.set(cam.name, createCard(cam, i))
+      renderCard(cards.get(cam.name), cam)
+    })
+    document.getElementById("roi").setAttribute("aria-pressed", data.centerMode)
+    document.getElementById("circle").setAttribute("aria-pressed", data.showCircle)
+  } catch (err) {
+    console.error("video-kit: stats の取得に失敗", err)
+  }
+  setTimeout(poll, POLL_MS)
+}
+
+function act(name) {
+  fetch(`/action/${name}`, { method: "POST" }).catch((err) => console.error(err))
+}
+
+document.getElementById("reset").onclick = () => act("reset")
+document.getElementById("roi").onclick = () => act("roi")
+document.getElementById("circle").onclick = () => act("circle")
+document.addEventListener("keydown", (e) => {
+  const map = { r: "reset", f: "roi", c: "circle" }
+  if (map[e.key]) act(map[e.key])
+})
+poll()
+</script>
+</body>
+</html>

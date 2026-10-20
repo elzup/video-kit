@@ -21,6 +21,10 @@ def test_targets_accept_url_and_ip():
     ]
 
 
+def test_digit_target_is_local_device():
+    assert cameras.get_cameras(["0"]) == [("dev0", "0")]
+
+
 def test_ips_env_uses_routecam_url(monkeypatch):
     monkeypatch.setenv("VIDEO_KIT_CAMERA_IPS", "192.0.2.10, 192.0.2.11")
     assert cameras.get_cameras() == [

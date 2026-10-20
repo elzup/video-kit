@@ -58,6 +58,29 @@ video-kit focus 192.0.2.10 192.0.2.11          # 2 台並べて表示
 video-kit focus 192.0.2.10                     # IP を指定 (RouteCam 形式の URL になる)
 video-kit focus rtsp://host:554/stream1       # URL を直接指定 (他機種はこちら)
 video-kit focus 192.0.2.10 192.0.2.11 --only cam11   # 1 台だけ大きく表示
+video-kit focus 1                             # Mac のカメラ (デバイス番号)
+video-kit focus 192.0.2.10 --web              # ブラウザに表示 (おすすめ)
+```
+
+### ブラウザ表示 `--web`
+
+OpenCV のウィンドウは文字を映像に焼き込むため、Retina ではぼやける。
+`--web` を付けるとブラウザに表示し、数値や判定がくっきり読める (日本語表示)。
+
+| オプション | 既定 | 意味 |
+|---|---|---|
+| `--port` | 0 (空きを自動) | 待ち受けるポート |
+| `--no-open` | なし | ブラウザを自動で開かない |
+
+終了はターミナルで `Ctrl+C`。
+
+### Mac のカメラの番号
+
+数字を渡すとローカルのカメラを開く。番号の並びは Mac ごとに違う
+(OBS の仮想カメラが 0 番を取ることがある)。次で確認できる:
+
+```bash
+ffmpeg -hide_banner -f avfoundation -list_devices true -i ""
 ```
 
 ### 使い方
@@ -151,6 +174,7 @@ uv run ruff format .       # 整形
 |---|---|
 | `src/video_kit/cli.py` | コマンドの入口 |
 | `src/video_kit/focus.py` | ピント合わせ画面と鮮鋭度 |
+| `src/video_kit/web.py` / `focus.html` | ブラウザ表示 (`--web`) |
 | `src/video_kit/cameras.py` | 接続先の決定とカメラ探索 |
 | `src/video_kit/stream_reader.py` | 最新フレームだけを持つ RTSP 受信 |
 | `src/video_kit/fisheye.py` | 魚眼円の検出 |

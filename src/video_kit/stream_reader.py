@@ -46,7 +46,11 @@ class StreamReader:
         return self
 
     def _loop(self) -> None:
-        cap = cv2.VideoCapture(self.url, cv2.CAP_FFMPEG)
+        if self.url.isdigit():
+            # ローカルのカメラは FFmpeg ではなく OS 標準のバックエンドで開く
+            cap = cv2.VideoCapture(int(self.url))
+        else:
+            cap = cv2.VideoCapture(self.url, cv2.CAP_FFMPEG)
         try:
             cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
         except Exception:

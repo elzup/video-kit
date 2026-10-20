@@ -66,10 +66,15 @@ def _split(text: str) -> list[str]:
 
 
 def from_targets(targets: list[str]) -> list[tuple[str, str]]:
-    """URL または IP の並びを [(名前, RTSP URL), ...] にする"""
+    """URL / IP / デバイス番号の並びを [(名前, 接続先), ...] にする
+
+    数字だけならローカルのカメラ (0 = Mac 内蔵カメラ等) として扱う。
+    """
     cameras = []
     for i, target in enumerate(targets):
-        if "://" in target:
+        if target.isdigit():
+            cameras.append((f"dev{target}", target))
+        elif "://" in target:
             cameras.append((f"cam{i + 1}", target))
         else:
             cameras.append((camera_name(target), rtsp_url(target)))

@@ -1,0 +1,38 @@
+[project]
+name = "video-kit"
+version = "0.1.0"
+description = "RTSP カメラ向けの道具箱 (ピント合わせ・カメラ探索)"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.26",
+    "opencv-python>=4.8,<5",
+]
+
+[project.scripts]
+video-kit = "video_kit.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "ruff>=0.6",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+# pyenv / Homebrew の Python を拾うと、それらの更新・削除で .venv が壊れる。
+# uv が自前で入れた Python だけを使い、外の環境と切り離す
+python-preference = "only-managed"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
